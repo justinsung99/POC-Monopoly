@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title>Babylon Template</title>
+
+        <style>
+            html, body {
+                overflow: hidden;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            #renderCanvas {
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }
+        </style>
+
+        <script src="https://cdn.babylonjs.com/babylon.js"></script>
+        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+        <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+        <script src="assets/babylon.objFileLoader.js"></script>
+    </head>
+
+   <body>
+
+    <canvas id="renderCanvas" touch-action="none"></canvas> <!-- touch-action="none" for best results from PEP -->
+
+    <script>
+        var canvas = document.getElementById("renderCanvas"); // Get the canvas element
+        var engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
+
+        /******* Add the create scene function ******/
+        var currTile = 0;
+
+        var createScene = function () {
+            // This creates a basic Babylon Scene object (non-mesh)
+        var scene = new BABYLON.Scene(engine);
+
+        // Add a camera to the scene and attach it to the canvas
+        var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, 1.1, 80, new BABYLON.Vector3(0,0,0), scene);
+        camera.attachControl(canvas, true);
+
+        // Limit camera movement
+        camera.lowerBetaLimit = 0.1;
+        camera.upperBetaLimit = (Math.PI / 2) * 0.99;
+
+        // This targets the camera to scene origin
+        camera.setTarget(BABYLON.Vector3.Zero());
+
+        // This attaches the camera to the canvas
+        camera.attachControl(canvas, true);
+
+        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+        // Default intensity is 1. Let's dim the light a small amount
+        light.intensity = 0.7;
+
+        // Our ground shape.
+        var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 55, height: 55}, scene);
+        var groundMaterial = new BABYLON.StandardMaterial("ground", scene);
+        groundMaterial.diffuseTexture = new BABYLON.Texture("https://upload.wikimedia.org/wikipedia/commons/a/a4/Monopolotabulo.jpg", scene);
+        groundMaterial.specularColor = BABYLON.Color3.Black();
+        ground.material = groundMaterial;
+
+
+        // Meshes
+        var greenStartingPoint = new BABYLON.Vector3(20,0,-22);
+
+        // tile-coordinate
+        var tileCoordMap = [
+            // start to hanya lewat
+            greenStartingPoint,
+            new BABYLON.Vector3(15,0,-22),
+            new BABYLON.Vector3(11,0,-22),
+            new BABYLON.Vector3(7,0,-22),
+            new BABYLON.Vector3(3,0,-22),
+            new BABYLON.Vector3(-3,0,-22),
+            new BABYLON.Vector3(-7,0,-22),
+            new BABYLON.Vector3(-11,0,-22),
+            new BABYLON.Vector3(-15,0,-22),
+            new BABYLON.Vector3(-20,0,-22),
+            // hanya lewat to pesawat
+            new BABYLON.Vector3(-26,0,-22),
+            new BABYLON.Vector3(-26,0,-15),
+            new BABYLON.Vector3(-26,0,-11),
+            new BABYLON.Vector3(-26,0,-7),
+            new BABYLON.Vector3(-26,0,-3),
+            new BABYLON.Vector3(-26,0,2),
+            new BABYLON.Vector3(-26,0,5),
+            new BABYLON.Vector3(-26,0,9),
+            new BABYLON.Vector3(-26,0,13),
+            new BABYLON.Vector3(-26,0,18),
+            // pesawat to jail
+            new BABYLON.Vector3(-24,0,24),
+            new BABYLON.Vector3(-20,0,24),
+            new BABYLON.Vector3(-15,0,24),
+            new BABYLON.Vector3(-11,0,24),
+            new BABYLON.Vector3(-7,0,24),
+            new BABYLON.Vector3(-3,0,24),
+            new BABYLON.Vector3(3,0,24),
+            new BABYLON.Vector3(7,0,24),
+            new BABYLON.Vector3(11,0,24),
+            new BABYLON.Vector3(15,0,24),
+            // jail to start
+            new BABYLON.Vector3(20,0,24),
+            new BABYLON.Vector3(20,0,18),
+            new BABYLON.Vector3(20,0,13),
+            new BABYLON.Vector3(20,0,9),
+            new BABYLON.Vector3(20,0,5),
+            new BABYLON.Vector3(20,0,2),
+            new BABYLON.Vector3(20,0,-3),
+            new BABYLON.Vector3(20,0,-7),
+            new BABYLON.Vector3(20,0,-11),
+            new BABYLON.Vector3(20,0,-15)
+        ]
+        // var meshisin = BABYLON.AbstractMesh;
+        var pawn;
+        
+        // import model
+        BABYLON.SceneLoader.ImportMesh("","assets/99-formatos/",'Figurita.obj',scene, function(newMeshes){
+            // on success
+            var modelScaling = 0.5;
+
+            pawn = newMeshes[1]; // 1 just happened to be the correct mesh for this object
+            pawn.scaling = new BABYLON.Vector3(modelScaling,modelScaling,modelScaling);
+            pawn.position = greenStartingPoint;
+            // Animation
+            const frameRate = 30;
+            var animationBox = new BABYLON.Animation(
+                "myAnimation",
+                "position",
+                frameRate,
+                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+                BABYLON.Animation.ANIMATIONLOOPMODE_RELATIVE
+            );
+            pawn.animations = [];
+            pawn.animations.push(animationBox);
+
+            // GUI
+            var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    
+            var button1 = BABYLON.GUI.Button.CreateSimpleButton("but1", "Move Green");
+            button1.width = "150px"
+            button1.height = "40px";
+            button1.color = "white";
+            button1.cornerRadius = 20;
+            button1.background = "green";
+            button1.left = "35%";
+            button1.top = "40%";
+            button1.onPointerUpObservable.add(function() {
+                var diceRollResult = 1;
+                var keys = [];
+    
+                // 3 keypoint in animation:
+                // starting point: 0,30,60 *in frames
+                // halfway point: 15,45,75
+                // landing point: 30,60,90
+                for(i=0; i<diceRollResult;i++) {
+                    console.log(pawn.animations)
+                    // starting keyppoint
+                    keys.push({
+                        frame: frameRate*i,
+                        value: tileCoordMap[currTile],
+                    });
+                    if(currTile === tileCoordMap.length-1) {
+                        currTile = 0;
+                    }
+                    else {
+                        // console.log(currTile);
+                        currTile++;
+                    }
+                    // flying effect
+                    var midX = tileCoordMap[currTile].x;
+                    var midY = 3;
+                    var midZ = tileCoordMap[currTile].z;
+    
+                    var midValue = new BABYLON.Vector3(
+                        midX,
+                        midY,
+                        midZ
+                    )
+    
+                    // halfway keypoint
+                    keys.push({
+                        frame: (frameRate*(i)+(frameRate/2)),
+                        value: midValue,
+                    });
+    
+                    // landing keypoint
+                    keys.push({
+                        frame: frameRate*(i+1),
+                        value: tileCoordMap[currTile]
+                    });
+                    animationBox.setKeys(keys);
+    
+                };
+                // animation promise, make sure animation finishes
+                setTimeout(async () => {
+                    var anim = scene.beginAnimation(pawn, 0, frameRate*diceRollResult, false, 1.0*diceRollResult);
+    
+                    await anim.waitAsync()
+                });
+                // bind to obj
+                console.log(currTile, tileCoordMap[currTile])
+                pawn.position = tileCoordMap[currTile];
+            });
+            advancedTexture.addControl(button1);
+
+            var button2 = BABYLON.GUI.Button.CreateSimpleButton("but2", "Reset");
+            button2.width = "150px"
+            button2.height = "40px";
+            button2.color = "white";
+            button2.cornerRadius = 20;
+            button2.background = "red";
+            button2.left = "35%";
+            button2.top = "45%";
+            button2.onPointerUpObservable.add(function() {
+                pawn.position = greenStartingPoint;
+                currTile = 0;
+            });
+            advancedTexture.addControl(button2);
+        });
+
+        return scene;
+        };
+        /******* End of the create scene function ******/
+
+        var scene = createScene(); //Call the createScene function
+
+        // Register a render loop to repeatedly render the scene
+        engine.runRenderLoop(function () {
+            scene.render();
+        });
+
+        // Watch for browser/canvas resize events
+        window.addEventListener("resize", function () {
+            engine.resize();
+        });
+    </script>
+
+   </body>
+
+</html>
