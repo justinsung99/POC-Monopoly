@@ -58,10 +58,10 @@
         camera.attachControl(canvas, true);
 
         // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
-        var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+        var light = new BABYLON.DirectionalLight("light", new BABYLON.Vector3(0, -2, -0.5), scene);
 
         // Default intensity is 1. Let's dim the light a small amount
-        light.intensity = 0.7;
+        light.intensity = 0.8;
 
         // Our ground shape.
         var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 55, height: 55}, scene);
@@ -69,15 +69,16 @@
         groundMaterial.diffuseTexture = new BABYLON.Texture("https://upload.wikimedia.org/wikipedia/commons/a/a4/Monopolotabulo.jpg", scene);
         groundMaterial.specularColor = BABYLON.Color3.Black();
         ground.material = groundMaterial;
+        // ground.receiveShadows = true;
 
 
         // Meshes
-        var greenStartingPoint = new BABYLON.Vector3(20,0,-22);
+        var pawnStartingPoint = new BABYLON.Vector3(20,0,-22);
 
         // tile-coordinate
         var tileCoordMap = [
             // start to hanya lewat
-            greenStartingPoint,
+            pawnStartingPoint,
             new BABYLON.Vector3(15,0,-22),
             new BABYLON.Vector3(11,0,-22),
             new BABYLON.Vector3(7,0,-22),
@@ -121,17 +122,36 @@
             new BABYLON.Vector3(20,0,-11),
             new BABYLON.Vector3(20,0,-15)
         ]
-        // var meshisin = BABYLON.AbstractMesh;
+
         var pawn;
-        
+
+        // Shadows
+        // var shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
+
+
         // import model
-        BABYLON.SceneLoader.ImportMesh("","assets/99-formatos/",'Figurita.obj',scene, function(newMeshes){
+        BABYLON.SceneLoader.ImportMesh("","assets/Stone_Chess_Rook/",'12941_Stone_Chess_Rook_Side_A_V2_l1.obj',scene, function(newMeshes) {
             // on success
             var modelScaling = 0.5;
 
-            pawn = newMeshes[1]; // 1 just happened to be the correct mesh for this object
+            pawn = newMeshes[0];
+
+            // set the model rightway up
+            pawn.addRotation(
+                -Math.PI/2,
+                0,
+                0,
+            )
+
+            // translate the model to align with predetermined coordinates
+            const translationVector = new BABYLON.Vector3(11,0,-11);
+
             pawn.scaling = new BABYLON.Vector3(modelScaling,modelScaling,modelScaling);
-            pawn.position = greenStartingPoint;
+            pawn.position = pawnStartingPoint.add(translationVector);
+
+            // shadowGenerator.getShadowMap().renderList.push(pawn);
+
+
             // Animation
             const frameRate = 30;
             var animationBox = new BABYLON.Animation(
@@ -168,7 +188,7 @@
                     // starting keyppoint
                     keys.push({
                         frame: frameRate*i,
-                        value: tileCoordMap[currTile],
+                        value: tileCoordMap[currTile].add(translationVector),
                     });
                     if(currTile === tileCoordMap.length-1) {
                         currTile = 0;
@@ -191,13 +211,13 @@
                     // halfway keypoint
                     keys.push({
                         frame: (frameRate*(i)+(frameRate/2)),
-                        value: midValue,
+                        value: midValue.add(translationVector),
                     });
     
                     // landing keypoint
                     keys.push({
                         frame: frameRate*(i+1),
-                        value: tileCoordMap[currTile]
+                        value: tileCoordMap[currTile].add(translationVector)
                     });
                     animationBox.setKeys(keys);
     
@@ -210,7 +230,7 @@
                 });
                 // bind to obj
                 console.log(currTile, tileCoordMap[currTile])
-                pawn.position = tileCoordMap[currTile];
+                pawn.position = tileCoordMap[currTile].add(translationVector);
             });
             advancedTexture.addControl(button1);
 
@@ -223,7 +243,7 @@
             button2.left = "35%";
             button2.top = "45%";
             button2.onPointerUpObservable.add(function() {
-                pawn.position = greenStartingPoint;
+                pawn.position = pawnStartingPoint.add(translationVector);
                 currTile = 0;
             });
             advancedTexture.addControl(button2);
