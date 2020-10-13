@@ -1,271 +1,331 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 
-    <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-        <title>Babylon Template</title>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Babylon Template</title>
 
-        <style>
-            html, body {
-                overflow: hidden;
-                width: 100%;
-                height: 100%;
-                margin: 0;
-                padding: 0;
-            }
+  <style>
+    html,
+    body {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
 
-            #renderCanvas {
-                width: 100%;
-                height: 100%;
-                touch-action: none;
-            }
-        </style>
+    #renderCanvas {
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+  </style>
 
-        <script src="https://cdn.babylonjs.com/babylon.js"></script>
-        <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
-        <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
-        <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
-        <script src="assets/babylon.objFileLoader.js"></script>
-    </head>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+  <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+  <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+  <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+  <script src="assets/babylon.objFileLoader.js"></script>
+  <script src="https://cdn.babylonjs.com/cannon.js"></script>
+</head>
 
-   <body>
+<body>
 
-    <canvas id="renderCanvas" touch-action="none"></canvas> <!-- touch-action="none" for best results from PEP -->
+  <canvas id="renderCanvas" touch-action="none"></canvas> <!-- touch-action="none" for best results from PEP -->
 
-    <script>
-        var canvas = document.getElementById("renderCanvas"); // Get the canvas element
-        var engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
+  <script>
+    //@TODO: using dice rotate state after dice finish rolling, determine dice value and then move pawn.
+    var canvas = document.getElementById("renderCanvas"); // Get the canvas element
+    var engine = new BABYLON.Engine(canvas, true); // Generate the BABYLON 3D engine
 
-        /******* Add the create scene function ******/
-        var currTile = 0;
+    /******* Add the create scene function ******/
+    var currTile = 0;
 
-        var createScene = function () {
-            // This creates a basic Babylon Scene object (non-mesh)
-        var scene = new BABYLON.Scene(engine);
+    var createScene = function () {
+      // This creates a Babylon Scene object (non-mesh) with physics
+      var scene = new BABYLON.Scene(engine);
+      var gravityVector = new BABYLON.Vector3(0, -9.81, 0);
+      var physicsPlugin = new BABYLON.CannonJSPlugin();
+      scene.enablePhysics(gravityVector, physicsPlugin);
 
-        // Add a camera to the scene and attach it to the canvas
-        var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, 1.1, 80, new BABYLON.Vector3(0,0,0), scene);
-        camera.attachControl(canvas, true);
+      // Add a camera to the scene and attach it to the canvas
+      var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, 1.1, 80, new BABYLON.Vector3(0, 0, 0), scene);
+      camera.attachControl(canvas, true);
 
-        // Limit camera movement
-        camera.lowerBetaLimit = 0.1;
-        camera.upperBetaLimit = (Math.PI / 2) * 0.99;
+      // Limit camera movement
+      camera.lowerBetaLimit = 0.1;
+      camera.upperBetaLimit = (Math.PI / 2) * 0.99;
 
-        // This targets the camera to scene origin
-        camera.setTarget(BABYLON.Vector3.Zero());
+      // This targets the camera to scene origin
+      camera.setTarget(BABYLON.Vector3.Zero());
 
-        // This attaches the camera to the canvas
-        camera.attachControl(canvas, true);
+      // This attaches the camera to the canvas
+      camera.attachControl(canvas, true);
 
-        // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
-        var light = new BABYLON.DirectionalLight("light", new BABYLON.Vector3(0, -2, -0.5), scene);
+      // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+      var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
 
-        // Default intensity is 1. Let's dim the light a small amount
-        light.intensity = 0.8;
+      // Default intensity is 1. Let's dim the light a small amount
+      light.intensity = 0.8;
 
-        // Our ground shape.
-        var ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 55, height: 55}, scene);
-        var groundMaterial = new BABYLON.StandardMaterial("ground", scene);
-        groundMaterial.diffuseTexture = new BABYLON.Texture("https://upload.wikimedia.org/wikipedia/commons/a/a4/Monopolotabulo.jpg", scene);
-        groundMaterial.specularColor = BABYLON.Color3.Black();
-        ground.material = groundMaterial;
-        // ground.receiveShadows = true;
-
-
-        // Meshes
-        var pawnStartingPoint = new BABYLON.Vector3(20,0,-22);
-
-        // tile-coordinate
-        var tileCoordMap = [
-            // start to hanya lewat
-            pawnStartingPoint,
-            new BABYLON.Vector3(15,0,-22),
-            new BABYLON.Vector3(11,0,-22),
-            new BABYLON.Vector3(7,0,-22),
-            new BABYLON.Vector3(3,0,-22),
-            new BABYLON.Vector3(-3,0,-22),
-            new BABYLON.Vector3(-7,0,-22),
-            new BABYLON.Vector3(-11,0,-22),
-            new BABYLON.Vector3(-15,0,-22),
-            new BABYLON.Vector3(-20,0,-22),
-            // hanya lewat to pesawat
-            new BABYLON.Vector3(-26,0,-22),
-            new BABYLON.Vector3(-26,0,-15),
-            new BABYLON.Vector3(-26,0,-11),
-            new BABYLON.Vector3(-26,0,-7),
-            new BABYLON.Vector3(-26,0,-3),
-            new BABYLON.Vector3(-26,0,2),
-            new BABYLON.Vector3(-26,0,5),
-            new BABYLON.Vector3(-26,0,9),
-            new BABYLON.Vector3(-26,0,13),
-            new BABYLON.Vector3(-26,0,18),
-            // pesawat to jail
-            new BABYLON.Vector3(-24,0,24),
-            new BABYLON.Vector3(-20,0,24),
-            new BABYLON.Vector3(-15,0,24),
-            new BABYLON.Vector3(-11,0,24),
-            new BABYLON.Vector3(-7,0,24),
-            new BABYLON.Vector3(-3,0,24),
-            new BABYLON.Vector3(3,0,24),
-            new BABYLON.Vector3(7,0,24),
-            new BABYLON.Vector3(11,0,24),
-            new BABYLON.Vector3(15,0,24),
-            // jail to start
-            new BABYLON.Vector3(20,0,24),
-            new BABYLON.Vector3(20,0,18),
-            new BABYLON.Vector3(20,0,13),
-            new BABYLON.Vector3(20,0,9),
-            new BABYLON.Vector3(20,0,5),
-            new BABYLON.Vector3(20,0,2),
-            new BABYLON.Vector3(20,0,-3),
-            new BABYLON.Vector3(20,0,-7),
-            new BABYLON.Vector3(20,0,-11),
-            new BABYLON.Vector3(20,0,-15)
-        ]
-
-        var pawn;
-
-        // Shadows
-        // var shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
+      // Our ground shape.
+      var ground = BABYLON.MeshBuilder.CreateGround("ground", { width: 55, height: 55 }, scene);
+      var groundMaterial = new BABYLON.StandardMaterial("ground", scene);
+      groundMaterial.diffuseTexture = new BABYLON.Texture("https://upload.wikimedia.org/wikipedia/commons/a/a4/Monopolotabulo.jpg", scene);
+      groundMaterial.specularColor = BABYLON.Color3.Black();
+      ground.material = groundMaterial;
+      // ground.receiveShadows = true;
+      ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, friction: 0.5, restitution: 0.7 }, scene);
 
 
-        // import model
-        BABYLON.SceneLoader.ImportMesh("","assets/Stone_Chess_Rook/",'12941_Stone_Chess_Rook_Side_A_V2_l1.obj',scene, function(newMeshes) {
-            // on success
-            var modelScaling = 0.5;
+      // Meshes
+      var pawnStartingPoint = new BABYLON.Vector3(20, 0, -22);
 
-            pawn = newMeshes[0];
+      // tile-coordinate
+      var tileCoordMap = [
+        // start to hanya lewat
+        pawnStartingPoint,
+        new BABYLON.Vector3(15, 0, -22),
+        new BABYLON.Vector3(11, 0, -22),
+        new BABYLON.Vector3(7, 0, -22),
+        new BABYLON.Vector3(3, 0, -22),
+        new BABYLON.Vector3(-3, 0, -22),
+        new BABYLON.Vector3(-7, 0, -22),
+        new BABYLON.Vector3(-11, 0, -22),
+        new BABYLON.Vector3(-15, 0, -22),
+        new BABYLON.Vector3(-20, 0, -22),
+        // hanya lewat to pesawat
+        new BABYLON.Vector3(-26, 0, -22),
+        new BABYLON.Vector3(-26, 0, -15),
+        new BABYLON.Vector3(-26, 0, -11),
+        new BABYLON.Vector3(-26, 0, -7),
+        new BABYLON.Vector3(-26, 0, -3),
+        new BABYLON.Vector3(-26, 0, 2),
+        new BABYLON.Vector3(-26, 0, 5),
+        new BABYLON.Vector3(-26, 0, 9),
+        new BABYLON.Vector3(-26, 0, 13),
+        new BABYLON.Vector3(-26, 0, 18),
+        // pesawat to jail
+        new BABYLON.Vector3(-24, 0, 24),
+        new BABYLON.Vector3(-20, 0, 24),
+        new BABYLON.Vector3(-15, 0, 24),
+        new BABYLON.Vector3(-11, 0, 24),
+        new BABYLON.Vector3(-7, 0, 24),
+        new BABYLON.Vector3(-3, 0, 24),
+        new BABYLON.Vector3(3, 0, 24),
+        new BABYLON.Vector3(7, 0, 24),
+        new BABYLON.Vector3(11, 0, 24),
+        new BABYLON.Vector3(15, 0, 24),
+        // jail to start
+        new BABYLON.Vector3(20, 0, 24),
+        new BABYLON.Vector3(20, 0, 18),
+        new BABYLON.Vector3(20, 0, 13),
+        new BABYLON.Vector3(20, 0, 9),
+        new BABYLON.Vector3(20, 0, 5),
+        new BABYLON.Vector3(20, 0, 2),
+        new BABYLON.Vector3(20, 0, -3),
+        new BABYLON.Vector3(20, 0, -7),
+        new BABYLON.Vector3(20, 0, -11),
+        new BABYLON.Vector3(20, 0, -15)
+      ]
 
-            // set the model rightway up
-            pawn.addRotation(
-                -Math.PI/2,
-                0,
-                0,
-            )
+      var pawn;
 
-            // translate the model to align with predetermined coordinates
-            const translationVector = new BABYLON.Vector3(11,0,-11);
-
-            pawn.scaling = new BABYLON.Vector3(modelScaling,modelScaling,modelScaling);
-            pawn.position = pawnStartingPoint.add(translationVector);
-
-            // shadowGenerator.getShadowMap().renderList.push(pawn);
+      // Shadows
+      // var shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
 
 
-            // Animation
-            const frameRate = 30;
-            var animationBox = new BABYLON.Animation(
-                "myAnimation",
-                "position",
-                frameRate,
-                BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
-                BABYLON.Animation.ANIMATIONLOOPMODE_RELATIVE
-            );
-            pawn.animations = [];
-            pawn.animations.push(animationBox);
+      // import model
+      BABYLON.SceneLoader.ImportMesh("", "assets/Stone_Chess_Rook/", '12941_Stone_Chess_Rook_Side_A_V2_l1.obj', scene, function (newMeshes) {
+        // on success
+        var modelScaling = 0.5;
 
-            // GUI
-            var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-    
-            var button1 = BABYLON.GUI.Button.CreateSimpleButton("but1", "Move Green");
-            button1.width = "150px"
-            button1.height = "40px";
-            button1.color = "white";
-            button1.cornerRadius = 20;
-            button1.background = "green";
-            button1.left = "35%";
-            button1.top = "40%";
-            button1.onPointerUpObservable.add(function() {
-                var diceRollResult = 1;
-                var keys = [];
-    
-                // 3 keypoint in animation:
-                // starting point: 0,30,60 *in frames
-                // halfway point: 15,45,75
-                // landing point: 30,60,90
-                for(i=0; i<diceRollResult;i++) {
-                    console.log(pawn.animations)
-                    // starting keyppoint
-                    keys.push({
-                        frame: frameRate*i,
+        pawn = newMeshes[0];
+
+        // set the model rightway up
+        pawn.addRotation(
+          -Math.PI / 2,
+          0,
+          0,
+        )
+
+        // translate the model to align with predetermined coordinates
+        const translationVector = new BABYLON.Vector3(11, 0, -11);
+
+        pawn.scaling = new BABYLON.Vector3(modelScaling, modelScaling, modelScaling);
+        pawn.position = pawnStartingPoint.add(translationVector);
+
+        // shadowGenerator.getShadowMap().renderList.push(pawn);
+
+
+        // Animation
+        const frameRate = 30;
+        var animationBox = new BABYLON.Animation(
+          "myAnimation",
+          "position",
+          frameRate,
+          BABYLON.Animation.ANIMATIONTYPE_VECTOR3,
+          BABYLON.Animation.ANIMATIONLOOPMODE_RELATIVE
+        );
+        pawn.animations = [];
+        pawn.animations.push(animationBox);
+
+        // GUI
+        var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+        var resetBtn = BABYLON.GUI.Button.CreateSimpleButton("resetBtn", "Reset");
+        resetBtn.width = "150px"
+        resetBtn.height = "40px";
+        resetBtn.color = "white";
+        resetBtn.cornerRadius = 20;
+        resetBtn.background = "red";
+        resetBtn.left = "35%";
+        resetBtn.top = "45%";
+        resetBtn.onPointerUpObservable.add(function () {
+          pawn.position = pawnStartingPoint.add(translationVector);
+          currTile = 0;
+        });
+        advancedTexture.addControl(resetBtn);
+
+        var rollDiceBtn = BABYLON.GUI.Button.CreateSimpleButton("rollDiceBtn", "Roll Dice");
+        rollDiceBtn.width = "150px"
+        rollDiceBtn.height = "40px";
+        rollDiceBtn.color = "white";
+        rollDiceBtn.cornerRadius = 20;
+        rollDiceBtn.background = "blue";
+        rollDiceBtn.left = "20%";
+        rollDiceBtn.top = "45%";
+
+        var diceObj;
+
+        rollDiceBtn.onPointerUpObservable.add(function () {
+          if (diceObj) {
+            diceObj.dispose()
+          }
+          BABYLON.OBJFileLoader.OPTIMIZE_WITH_UV = true;
+          BABYLON.SceneLoader.ImportMesh("", "assets/dice_obj/", 'dice.obj', scene, function (diceMeshes) {
+            var diceScale = 3.0;
+            diceObj = diceMeshes[1];
+            diceObj.scaling = new BABYLON.Vector3(diceScale, diceScale, diceScale);
+            diceObj.position = new BABYLON.Vector3(0, 10, 0);
+
+            // initial roll variables
+            var localRefPoints = new BABYLON.Vector3(2, 2, 3);
+
+            // these results are static and depends on roll variables, so diff roll variables and board/dice size will break this mapping
+            const diceRollImpulseSeed = [
+              new BABYLON.Vector3(3, 3, 2), // 1
+              new BABYLON.Vector3(-3, -3, -3), // 2
+              new BABYLON.Vector3(-2, 1, -3), // 3
+              new BABYLON.Vector3(-1, -3, 3), // 5
+              new BABYLON.Vector3(-1, 3, 1), // 4
+              new BABYLON.Vector3(-1, 3, 3), // 6
+            ]
+            var diceResult = Math.floor(Math.random() * 6); // get random number 1-5
+            var impulseVector = diceRollImpulseSeed[diceResult] // the index is the actuall dice result-1
+            console.log('roll result', diceResult + 1)
+            diceObj.physicsImpostor = new BABYLON.PhysicsImpostor(diceObj, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 1, friction: 0.5, restitution: 0.4 }, scene);
+            diceObj.physicsImpostor.applyImpulse(impulseVector, diceObj.getAbsolutePosition().add(localRefPoints));
+            var diceRollResult = diceResult + 1;
+            var isDiceAnimDone = false;
+            diceObj.physicsImpostor.registerOnPhysicsCollide(ground.physicsImpostor,
+              (dice, ground) => {
+                // console.log(dice.physicsBody);
+                var diceAngX = Math.abs(dice.physicsBody.angularVelocity.x);
+                var diceAngY = Math.abs(dice.physicsBody.angularVelocity.y);
+                var diceAngZ = Math.abs(dice.physicsBody.angularVelocity.z);
+
+                if (diceAngX <= 0.2 && diceAngY <= 0.2 && diceAngZ <= 0.2) {
+                  /*
+                  * CAVEAT: this block of code will be called multiple times, hence the boolean flag.
+                  * another CAVEAT is this block will sometimes run mid dice roll, using angular velocity
+                  * to determine wheter dice stopped rolling or not is imperfect.
+                  */
+                  if (!isDiceAnimDone) {
+
+                    var keys = [];
+
+                    // 3 keypoint in animation:
+                    // starting point: 0,30,60 *in frames
+                    // halfway point: 15,45,75
+                    // landing point: 30,60,90
+                    for (i = 0; i < diceRollResult; i++) {
+                      // console.log(pawn.animations)
+                      // starting keypoint
+                      keys.push({
+                        frame: frameRate * i,
                         value: tileCoordMap[currTile].add(translationVector),
-                    });
-                    if(currTile === tileCoordMap.length-1) {
+                      });
+                      if (currTile === tileCoordMap.length - 1) {
                         currTile = 0;
-                    }
-                    else {
+                      }
+                      else {
                         // console.log(currTile);
                         currTile++;
-                    }
-                    // flying effect
-                    var midX = tileCoordMap[currTile].x;
-                    var midY = 3;
-                    var midZ = tileCoordMap[currTile].z;
-    
-                    var midValue = new BABYLON.Vector3(
+                      }
+                      // flying effect
+                      var midX = tileCoordMap[currTile].x;
+                      var midY = 3;
+                      var midZ = tileCoordMap[currTile].z;
+
+                      var midValue = new BABYLON.Vector3(
                         midX,
                         midY,
                         midZ
-                    )
-    
-                    // halfway keypoint
-                    keys.push({
-                        frame: (frameRate*(i)+(frameRate/2)),
+                      );
+
+                      // halfway keypoint
+                      keys.push({
+                        frame: (frameRate * (i) + (frameRate / 2)),
                         value: midValue.add(translationVector),
-                    });
-    
-                    // landing keypoint
-                    keys.push({
-                        frame: frameRate*(i+1),
+                      });
+
+                      // landing keypoint
+                      keys.push({
+                        frame: frameRate * (i + 1),
                         value: tileCoordMap[currTile].add(translationVector)
+                      });
+                      animationBox.setKeys(keys);
+                    };
+
+                    // animation promise, make sure animation finishes
+                    setTimeout(async () => {
+                      var anim = scene.beginAnimation(pawn, 0, frameRate * diceRollResult, false, 1.0 * diceRollResult);
+
+                      await anim.waitAsync()
                     });
-                    animationBox.setKeys(keys);
-    
+                    // bind to obj
+                    console.log(currTile, tileCoordMap[currTile])
+                    pawn.position = tileCoordMap[currTile].add(translationVector);
+
+                    isDiceAnimDone = true; // flag to make sure animation only run once
+                  }
                 };
-                // animation promise, make sure animation finishes
-                setTimeout(async () => {
-                    var anim = scene.beginAnimation(pawn, 0, frameRate*diceRollResult, false, 1.0*diceRollResult);
-    
-                    await anim.waitAsync()
-                });
-                // bind to obj
-                console.log(currTile, tileCoordMap[currTile])
-                pawn.position = tileCoordMap[currTile].add(translationVector);
-            });
-            advancedTexture.addControl(button1);
-
-            var button2 = BABYLON.GUI.Button.CreateSimpleButton("but2", "Reset");
-            button2.width = "150px"
-            button2.height = "40px";
-            button2.color = "white";
-            button2.cornerRadius = 20;
-            button2.background = "red";
-            button2.left = "35%";
-            button2.top = "45%";
-            button2.onPointerUpObservable.add(function() {
-                pawn.position = pawnStartingPoint.add(translationVector);
-                currTile = 0;
-            });
-            advancedTexture.addControl(button2);
+              }
+            );
+          });
         });
+        advancedTexture.addControl(rollDiceBtn);
+      });
 
-        return scene;
-        };
-        /******* End of the create scene function ******/
+      return scene;
+    };
+    /******* End of the create scene function ******/
 
-        var scene = createScene(); //Call the createScene function
+    var scene = createScene(); //Call the createScene function
 
-        // Register a render loop to repeatedly render the scene
-        engine.runRenderLoop(function () {
-            scene.render();
-        });
+    // Register a render loop to repeatedly render the scene
+    engine.runRenderLoop(function () {
+      scene.render();
+    });
 
-        // Watch for browser/canvas resize events
-        window.addEventListener("resize", function () {
-            engine.resize();
-        });
-    </script>
+    // Watch for browser/canvas resize events
+    window.addEventListener("resize", function () {
+      engine.resize();
+    });
+  </script>
 
-   </body>
+</body>
 
 </html>
